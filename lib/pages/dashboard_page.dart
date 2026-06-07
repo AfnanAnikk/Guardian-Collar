@@ -216,10 +216,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: _loadStatus,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
                   ],
                 ),
 
@@ -311,7 +307,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _actionButton(
                   text: safeZone.toLowerCase().contains('not set') ? 'Set Safe Zone' : 'Edit Safe Zone',
                   icon: Icons.map_rounded,
-                  filled: true,
+                  filled: false,
                   onTap: () async {
                     final updated = await Navigator.push(
                       context,
