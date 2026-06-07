@@ -16,8 +16,11 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
 
   LatLng? _safeZoneCenter;
   double _radius = 300;
+  double? _accuracy;
+
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isGettingLocation = false;
 
   @override
   void initState() {
@@ -38,11 +41,13 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        timeLimit: const Duration(seconds: 20),
       );
 
       setState(() {
         _safeZoneCenter = LatLng(position.latitude, position.longitude);
+        _accuracy = position.accuracy;
         _isLoading = false;
       });
     } catch (_) {
@@ -55,7 +60,11 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
 
   Future<bool> _handleLocationPermission() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return false;
+
+    if (!serviceEnabled) {
+      _showMessage('Turn on phone location/GPS');
+      return false;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
 
@@ -63,8 +72,14 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
       permission = await Geolocator.requestPermission();
     }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied) {
+      _showMessage('Location permission denied');
+      return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showMessage('Location permission blocked. Enable it from settings.');
+      await Geolocator.openAppSettings();
       return false;
     }
 
@@ -72,26 +87,42 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
   }
 
   Future<void> _useCurrentLocation() async {
-    final permissionOk = await _handleLocationPermission();
+    setState(() => _isGettingLocation = true);
 
-    if (!permissionOk) {
-      _showMessage('Location permission is required');
-      return;
+    try {
+      final permissionOk = await _handleLocationPermission();
+
+      if (!permissionOk) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        timeLimit: const Duration(seconds: 20),
+      );
+
+      final newCenter = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _safeZoneCenter = newCenter;
+        _accuracy = position.accuracy;
+      });
+
+      _mapController.move(newCenter, 18);
+
+      _showMessage('Location set within about ${position.accuracy.round()}m');
+    } catch (_) {
+      _showMessage('Could not get accurate location. Try again outside.');
+    } finally {
+      if (mounted) setState(() => _isGettingLocation = false);
     }
-
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    final newCenter = LatLng(position.latitude, position.longitude);
-
-    setState(() => _safeZoneCenter = newCenter);
-    _mapController.move(newCenter, 16);
   }
 
   Future<void> _saveSafeZone() async {
     final center = _safeZoneCenter;
-    if (center == null) return;
+
+    if (center == null) {
+      _showMessage('Pick a safe zone first');
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -108,9 +139,9 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
         _showMessage('Safe zone saved');
         Navigator.pop(context, true);
       } else {
-        _showMessage('Could not save safe zone');
+        _showMessage(result['message']?.toString() ?? 'Could not save safe zone');
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       _showMessage('Could not save safe zone');
     } finally {
@@ -153,13 +184,15 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
                     initialCenter: center,
                     initialZoom: 16,
                     onTap: (_, point) {
-                      setState(() => _safeZoneCenter = point);
+                      setState(() {
+                        _safeZoneCenter = point;
+                        _accuracy = null;
+                      });
                     },
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.guardian_collar',
                     ),
                     CircleLayer(
@@ -203,6 +236,7 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
                     ),
                   ],
                 ),
+
                 Positioned(
                   left: 18,
                   right: 18,
@@ -261,23 +295,21 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: _useCurrentLocation,
-                                icon: const Icon(Icons.my_location_rounded),
-                                label: const Text('Use My Location'),
+                                onPressed: _isGettingLocation ? null : _useCurrentLocation,
+                                icon: _isGettingLocation
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.my_location_rounded),
+                                label: Text(_isGettingLocation ? 'Finding...' : 'Use My Location'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: const Color(0xFF1F2933),
-                                  side: const BorderSide(
-                                    color: Color(0xFFD7FF5F),
-                                    width: 2,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  textStyle: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  side: const BorderSide(color: Color(0xFFD7FF5F), width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
                                 ),
                               ),
                             ),
@@ -289,33 +321,28 @@ class _SafeZoneMapPageState extends State<SafeZoneMapPage> {
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
+                                        child: CircularProgressIndicator(strokeWidth: 2),
                                       )
                                     : const Icon(Icons.check_rounded),
-                                label: const Text('Save'),
+                                label: Text(_isSaving ? 'Saving...' : 'Save'),
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor: const Color(0xFFD7FF5F),
                                   foregroundColor: const Color(0xFF1F2933),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  textStyle: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
                                 ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'Tap map or drag the paw to move the safe zone.',
-                          style: TextStyle(
+                        Text(
+                          _accuracy == null
+                              ? 'Tap the map to move the safe zone.'
+                              : 'Accuracy: about ${_accuracy!.round()}m. Tap map to fine-tune.',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
                             fontWeight: FontWeight.w600,

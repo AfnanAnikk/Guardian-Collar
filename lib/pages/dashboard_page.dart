@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'live_stream_page.dart';
 import 'safe_zone_map_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,6 +21,9 @@ class _DashboardPageState extends State<DashboardPage> {
   double? safeZoneLat;
   double? safeZoneLng;
   int? safeZoneRadius;
+
+  double? collarLat;
+  double? collarLng;
 
   String activity = 'Loading...';
   String location = 'Loading...';
@@ -53,7 +57,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
       setState(() {
         activity = data['activity']?.toString() ?? 'Waiting for ESP32';
-        location = data['gpsText']?.toString() ?? data['gps_text']?.toString() ?? 'Waiting for GPS fix';
+        final rawLocation = data['gpsText']?.toString() ?? data['gps_text']?.toString();
+
+        _parseCollarLocation(rawLocation);
+
+        if (collarLat != null && collarLng != null) {
+          location = 'Location available';
+        } else {
+          location = 'Waiting for GPS fix';
+        }
         safeZone = data['safeZoneStatus']?.toString() ?? data['safe_zone_status']?.toString() ?? 'Not set';
         meowResult = data['meowText']?.toString() ?? data['meow_text']?.toString() ?? 'No translation yet';
         lastUpdated = data['updatedAt']?.toString() ?? data['updated_at']?.toString() ?? 'Not updated yet';
@@ -101,6 +113,36 @@ class _DashboardPageState extends State<DashboardPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
+
+  void _parseCollarLocation(String? rawLocation) {
+    if (rawLocation == null || !rawLocation.contains(',')) return;
+
+    final parts = rawLocation.split(',');
+    if (parts.length != 2) return;
+
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+
+    if (lat == null || lng == null) return;
+
+    collarLat = lat;
+    collarLng = lng;
+  }
+
+  Future<void> _openCollarMap() async {
+    if (collarLat == null || collarLng == null) {
+      _showMessage('No collar location available yet');
+      return;
+    }
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$collarLat,$collarLng',
+    );
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showMessage('Could not open map');
+    }
   }
 
   Widget _statusCard({
@@ -226,7 +268,55 @@ class _DashboardPageState extends State<DashboardPage> {
 
                 _statusCard(title: 'Current Activity', value: activity, icon: Icons.directions_walk_rounded),
                 const SizedBox(height: 12),
-                _statusCard(title: 'Last Location', value: location, icon: Icons.location_on_rounded),
+                GestureDetector(
+                  onTap: _openCollarMap,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F8FA),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD7FF5F),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.location_on_rounded, color: Color(0xFF1F2933)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Last Location',
+                                style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                location,
+                                style: const TextStyle(fontSize: 18, color: Color(0xFF374957), fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                collarLat == null || collarLng == null
+                                    ? 'Waiting for collar GPS signal'
+                                    : 'Tap to view collar on map',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.open_in_new_rounded, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
