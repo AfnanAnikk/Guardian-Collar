@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'live_stream_page.dart';
+import 'safe_zone_map_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -15,6 +16,10 @@ class _DashboardPageState extends State<DashboardPage> {
   bool manualVibrationOn = false;
   bool isLoadingStatus = true;
   bool isSendingCommand = false;
+
+  double? safeZoneLat;
+  double? safeZoneLng;
+  int? safeZoneRadius;
 
   String activity = 'Loading...';
   String location = 'Loading...';
@@ -53,6 +58,9 @@ class _DashboardPageState extends State<DashboardPage> {
         meowResult = data['meowText']?.toString() ?? data['meow_text']?.toString() ?? 'No translation yet';
         lastUpdated = data['updatedAt']?.toString() ?? data['updated_at']?.toString() ?? 'Not updated yet';
         isLoadingStatus = false;
+        safeZoneLat = data['safeZoneLatitude'];
+        safeZoneLng = data['safeZoneLongitude'];
+        safeZoneRadius = data['safeZoneRadius'];
       });
     } catch (_) {
       if (!mounted) return;
@@ -224,7 +232,72 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 12),
                 _statusCard(title: 'Last Location', value: location, icon: Icons.location_on_rounded),
                 const SizedBox(height: 12),
-                _statusCard(title: 'Safe Zone', value: safeZone, icon: Icons.shield_rounded),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: safeZone.toLowerCase().contains('outside')
+                        ? const Color(0xFFFFE8E8)
+                        : safeZone.toLowerCase().contains('not set')
+                            ? const Color(0xFFF7F8FA)
+                            : const Color(0xFFF1FFD0),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: safeZone.toLowerCase().contains('outside')
+                              ? Colors.red.shade100
+                              : const Color(0xFFD7FF5F),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          safeZone.toLowerCase().contains('outside')
+                              ? Icons.warning_rounded
+                              : Icons.shield_rounded,
+                          color: const Color(0xFF1F2933),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Safe Zone',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              safeZone,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Color(0xFF374957),
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tap Edit Safe Zone to move or resize the boundary.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 24),
 
@@ -235,7 +308,23 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 10),
                 _actionButton(text: "What's Mithu Doing?", icon: Icons.monitor_heart_rounded, onTap: () => _sendCommand('get_activity')),
                 const SizedBox(height: 10),
-                _actionButton(text: 'Set Safe Zone', icon: Icons.map_rounded, onTap: () => _sendCommand('set_safe_zone')),
+                _actionButton(
+                  text: safeZone.toLowerCase().contains('not set') ? 'Set Safe Zone' : 'Edit Safe Zone',
+                  icon: Icons.map_rounded,
+                  filled: true,
+                  onTap: () async {
+                    final updated = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SafeZoneMapPage(),
+                      ),
+                    );
+
+                    if (updated == true) {
+                      _loadStatus();
+                    }
+                  },
+                ),
                 const SizedBox(height: 10),
                 _actionButton(text: 'Meow to Human', icon: Icons.graphic_eq_rounded, onTap: () => _sendCommand('meow_to_human')),
 
