@@ -15,6 +15,13 @@ let latestStatus = {
   updatedAt: null
 };
 
+let safeZone = {
+  latitude: null,
+  longitude: null,
+  radius: null,
+  updatedAt: null
+};
+
 let latestCommand = null;
 
 app.get("/", (req, res) => {
@@ -57,6 +64,47 @@ app.get("/api/device/command", (req, res) => {
   const command = latestCommand;
   latestCommand = null;
   res.json({ success: true, command });
+});
+
+app.post("/api/safe-zone", (req, res) => {
+  const { latitude, longitude, radius } = req.body;
+
+  if (latitude == null || longitude == null || radius == null) {
+    return res.status(400).json({
+      success: false,
+      message: "latitude, longitude and radius are required"
+    });
+  }
+
+  safeZone = {
+    latitude,
+    longitude,
+    radius,
+    updatedAt: new Date().toISOString()
+  };
+
+  latestStatus.safeZoneStatus = `Set: ${radius}m radius`;
+  latestStatus.updatedAt = new Date().toISOString();
+
+  latestCommand = {
+    type: "set_safe_zone",
+    latitude,
+    longitude,
+    radius,
+    createdAt: new Date().toISOString()
+  };
+
+  res.json({
+    success: true,
+    data: safeZone
+  });
+});
+
+app.get("/api/safe-zone", (req, res) => {
+  res.json({
+    success: true,
+    data: safeZone
+  });
 });
 
 const PORT = process.env.PORT || 5000;
