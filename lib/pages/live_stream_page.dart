@@ -25,6 +25,11 @@ class _LiveStreamPageState extends State<LiveStreamPage> {
 
   Future<void> fetchCameraUrl() async {
     try {
+      setState(() {
+        loading = true;
+        error = null;
+      });
+
       final res = await http.get(
         Uri.parse('$renderBaseUrl/api/device/status'),
       );
@@ -33,8 +38,9 @@ class _LiveStreamPageState extends State<LiveStreamPage> {
         throw Exception('Server returned ${res.statusCode}');
       }
 
-      final data = jsonDecode(res.body);
-      final url = data['cameraUrl'];
+      final decoded = jsonDecode(res.body);
+      final status = decoded['data'];
+      final url = status?['cameraUrl'];
 
       if (url == null || url.toString().isEmpty) {
         throw Exception('Camera URL not available yet');
