@@ -12,6 +12,8 @@ let latestStatus = {
   gpsText: "Waiting for GPS fix",
   safeZoneStatus: "Not set",
   meowText: "No translation yet",
+  cameraUrl: null,
+  cameraStatus: "off",
   updatedAt: null
 };
 
@@ -28,24 +30,6 @@ app.get("/", (req, res) => {
   res.json({ ok: true, app: "Guardian Collar API" });
 });
 
-app.post("/api/device/status", (req, res) => {
-  const { activity, latitude, longitude, gpsText, safeZoneStatus, meowText } = req.body;
-
-  latestStatus = {
-    activity: activity ?? latestStatus.activity,
-    latitude: latitude ?? latestStatus.latitude,
-    longitude: longitude ?? latestStatus.longitude,
-    gpsText: gpsText ?? latestStatus.gpsText,
-    safeZoneStatus: safeZoneStatus ?? latestStatus.safeZoneStatus,
-    meowText: meowText ?? latestStatus.meowText,
-    updatedAt: new Date().toISOString(),
-    cameraUrl: null,
-    cameraStatus: "off",
-    updatedAt: null
-  };
-
-  res.json({ success: true, data: latestStatus });
-});
 
 app.get("/api/device/status", (req, res) => {
   res.json({ success: true, data: latestStatus });

@@ -436,7 +436,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
+                      await _sendCommand('start_camera');
+
+                      if (!mounted) return;
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -460,21 +464,36 @@ class _DashboardPageState extends State<DashboardPage> {
                 const Text('Collar Control', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF374957))),
                 const SizedBox(height: 12),
 
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: _actionButton(
-                        text: 'Food Time',
-                        icon: Icons.restaurant_rounded,
-                        onTap: () => _sendCommand('food_time'),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionButton(
+                            text: 'Food Time',
+                            icon: Icons.restaurant_rounded,
+                            onTap: () => _sendCommand('food_time'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _actionButton(
+                            text: 'Calm Down',
+                            icon: Icons.self_improvement_rounded,
+                            onTap: () => _sendCommand('calm_down'),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _actionButton(
-                        text: 'Calm Down',
-                        icon: Icons.self_improvement_rounded,
-                        onTap: () => _sendCommand('calm_down'),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: FractionallySizedBox(
+                        widthFactor: 0.5,
+                        child: _actionButton(
+                          text: 'Come Back',
+                          icon: Icons.keyboard_return_rounded,
+                          onTap: () => _sendCommand('come_back'),
+                        ),
                       ),
                     ),
                   ],
