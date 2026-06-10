@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:guardian_collar/pages/dashboard_page.dart';
 import '../../widgets/primary_button.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
@@ -26,11 +27,27 @@ class LoginMainPage extends StatelessWidget {
               const Text('Guardian Collar', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: Color(0xFF374957))),
               const SizedBox(height: 10),
               const Text('Track, understand, and care for Mithu.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
-              const Spacer(),
+              const Spacer(), 
               PrimaryButton(text: 'Log In', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage()))),
               const SizedBox(height: 12),
               PrimaryButton(text: 'Create Account', isOutlined: true, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupPage()))),
               const SizedBox(height: 18),
+              const Spacer(), 
+              GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const DashboardPage()),
+                      );
+                    },
+                    child: const Text(
+                      'Enter',
+                      style: TextStyle(
+                        color: Color(0xFF7BA800),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+              ),
             ],
           ),
         ),

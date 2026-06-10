@@ -1,10 +1,89 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:mjpeg_stream/mjpeg_stream.dart';
 
-class LiveStreamPage extends StatelessWidget {
+class LiveStreamPage extends StatefulWidget {
   const LiveStreamPage({super.key});
 
-  static const String streamUrl = 'http://YOUR_ESP32_CAM_IP:81/stream';
+  @override
+  State<LiveStreamPage> createState() => _LiveStreamPageState();
+}
+
+class _LiveStreamPageState extends State<LiveStreamPage> {
+  static const String renderBaseUrl = 'https://guardian-collar.onrender.com';
+
+  bool loading = true;
+  String? streamUrl;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCameraUrl();
+  }
+
+  Future<void> fetchCameraUrl() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$renderBaseUrl/api/device/status'),
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception('Server returned ${res.statusCode}');
+      }
+
+      final data = jsonDecode(res.body);
+      final url = data['cameraUrl'];
+
+      if (url == null || url.toString().isEmpty) {
+        throw Exception('Camera URL not available yet');
+      }
+
+      setState(() {
+        streamUrl = url.toString();
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        loading = false;
+      });
+    }
+  }
+
+  Widget buildStreamBox() {
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Text(
+            error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1F2933),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return MJPEGStreamScreen(
+      streamUrl: streamUrl!,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.contain,
+      showLiveIcon: true,
+      showLogs: false,
+      showWatermark: false,
+      borderRadius: 0,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,16 +142,7 @@ class LiveStreamPage extends StatelessWidget {
                     border: Border.all(color: const Color(0xFFE5E7EB)),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: MJPEGStreamScreen(
-                    streamUrl: streamUrl,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.contain,
-                    showLiveIcon: true,
-                    showLogs: false,
-                    showWatermark: false,
-                    borderRadius: 0,
-                  ),
+                  child: buildStreamBox(),
                 ),
               ),
               const SizedBox(height: 16),

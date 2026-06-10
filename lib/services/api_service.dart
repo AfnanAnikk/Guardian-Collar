@@ -59,4 +59,30 @@ class ApiService {
 
     return jsonDecode(res.body);
   }
+
+  static Future<Map<String, dynamic>> startCamera() async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/camera/start'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Start camera failed: ${res.statusCode} ${res.body}');
+    }
+
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> stopCamera() async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/camera/stop'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Stop camera failed: ${res.statusCode} ${res.body}');
+    }
+
+    return jsonDecode(res.body);
+  }
 }

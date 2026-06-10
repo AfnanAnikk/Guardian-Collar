@@ -38,7 +38,10 @@ app.post("/api/device/status", (req, res) => {
     gpsText: gpsText ?? latestStatus.gpsText,
     safeZoneStatus: safeZoneStatus ?? latestStatus.safeZoneStatus,
     meowText: meowText ?? latestStatus.meowText,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    cameraUrl: null,
+    cameraStatus: "off",
+    updatedAt: null
   };
 
   res.json({ success: true, data: latestStatus });
@@ -66,44 +69,69 @@ app.get("/api/device/command", (req, res) => {
   res.json({ success: true, command });
 });
 
-app.post("/api/safe-zone", (req, res) => {
-  const { latitude, longitude, radius } = req.body;
-
-  if (latitude == null || longitude == null || radius == null) {
-    return res.status(400).json({
-      success: false,
-      message: "latitude, longitude and radius are required"
-    });
-  }
-
-  safeZone = {
+app.post("/api/device/status", (req, res) => {
+  const {
+    activity,
     latitude,
     longitude,
-    radius,
+    gpsText,
+    safeZoneStatus,
+    meowText,
+    cameraUrl,
+    cameraStatus
+  } = req.body;
+
+  latestStatus = {
+    activity: activity ?? latestStatus.activity,
+    latitude: latitude ?? latestStatus.latitude,
+    longitude: longitude ?? latestStatus.longitude,
+    gpsText: gpsText ?? latestStatus.gpsText,
+    safeZoneStatus: safeZoneStatus ?? latestStatus.safeZoneStatus,
+    meowText: meowText ?? latestStatus.meowText,
+    cameraUrl: cameraUrl ?? latestStatus.cameraUrl,
+    cameraStatus: cameraStatus ?? latestStatus.cameraStatus,
     updatedAt: new Date().toISOString()
   };
 
-  latestStatus.safeZoneStatus = `Set: ${radius}m radius`;
-  latestStatus.updatedAt = new Date().toISOString();
-
-  latestCommand = {
-    type: "set_safe_zone",
-    latitude,
-    longitude,
-    radius,
-    createdAt: new Date().toISOString()
-  };
-
-  res.json({
-    success: true,
-    data: safeZone
-  });
+  res.json({ success: true, data: latestStatus });
 });
 
 app.get("/api/safe-zone", (req, res) => {
   res.json({
     success: true,
     data: safeZone
+  });
+});
+
+app.post("/api/camera/start", (req, res) => {
+  latestCommand = {
+    type: "start_camera",
+    createdAt: new Date().toISOString()
+  };
+
+  latestStatus.cameraStatus = "starting";
+  latestStatus.updatedAt = new Date().toISOString();
+
+  res.json({
+    success: true,
+    command: latestCommand,
+    data: latestStatus
+  });
+});
+
+app.post("/api/camera/stop", (req, res) => {
+  latestCommand = {
+    type: "stop_camera",
+    createdAt: new Date().toISOString()
+  };
+
+  latestStatus.cameraStatus = "off";
+  latestStatus.updatedAt = new Date().toISOString();
+
+  res.json({
+    success: true,
+    command: latestCommand,
+    data: latestStatus
   });
 });
 
