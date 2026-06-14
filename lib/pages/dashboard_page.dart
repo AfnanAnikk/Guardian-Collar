@@ -55,6 +55,19 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  Future<void> _deleteCustomPattern(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> stored = prefs.getStringList('custom_vibrations') ?? [];
+    if (index >= 0 && index < stored.length) {
+      stored.removeAt(index);
+      await prefs.setStringList('custom_vibrations', stored);
+      setState(() {
+        customPatterns = stored.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
+      });
+      _showMessage('Pattern deleted');
+    }
+  }
+
   @override
   void dispose() {
     _statusTimer?.cancel();
@@ -202,6 +215,7 @@ class _DashboardPageState extends State<DashboardPage> {
     required String text,
     required IconData icon,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
     bool filled = false,
   }) {
     return Material(
@@ -209,6 +223,7 @@ class _DashboardPageState extends State<DashboardPage> {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: isSendingCommand ? null : onTap,
+        onLongPress: isSendingCommand ? null : onLongPress,
         borderRadius: BorderRadius.circular(18),
         splashColor: const Color(0xFFD7FF5F).withOpacity(0.75),
         highlightColor: const Color(0xFFD7FF5F).withOpacity(0.35),
@@ -514,7 +529,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     if (customPatterns.isNotEmpty) ...[
                       const Divider(),
                       const SizedBox(height: 10),
-                      ...customPatterns.map((patternObj) {
+                      ...customPatterns.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        var patternObj = entry.value;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: _actionButton(
@@ -524,6 +541,29 @@ class _DashboardPageState extends State<DashboardPage> {
                               List<dynamic> dynamicPattern = patternObj['pattern'];
                               List<int> patternList = dynamicPattern.cast<int>();
                               _sendCommand('custom_vibration', pattern: patternList);
+                            },
+                            onLongPress: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Delete Pattern'),
+                                  content: Text('Are you sure you want to delete "${patternObj['name']}"?'),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _deleteCustomPattern(index);
+                                      },
+                                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           ),
                         );
