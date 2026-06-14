@@ -41,10 +41,12 @@ class ApiService {
   static Future<Map<String, dynamic>> sendCommand({
     required String type,
     int? intensity,
+    List<int>? pattern,
   }) async {
     final body = {
       'type': type,
       if (intensity != null) 'intensity': intensity,
+      if (pattern != null) 'pattern': pattern,
     };
 
     final res = await http.post(

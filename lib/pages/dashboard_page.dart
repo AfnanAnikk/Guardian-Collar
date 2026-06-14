@@ -4,6 +4,9 @@ import '../services/api_service.dart';
 import 'live_stream_page.dart';
 import 'safe_zone_map_page.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'custom_vibration_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -17,6 +20,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool manualVibrationOn = false;
   bool isLoadingStatus = true;
   bool isSendingCommand = false;
+  List<Map<String, dynamic>> customPatterns = [];
 
   double? safeZoneLat;
   double? safeZoneLng;
@@ -37,8 +41,17 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadStatus();
+    _loadCustomPatterns();
     _statusTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadStatus();
+    });
+  }
+
+  Future<void> _loadCustomPatterns() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> stored = prefs.getStringList('custom_vibrations') ?? [];
+    setState(() {
+      customPatterns = stored.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
     });
   }
 
@@ -83,13 +96,14 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _sendCommand(String type, {int? intensity}) async {
+  Future<void> _sendCommand(String type, {int? intensity, List<int>? pattern}) async {
     setState(() => isSendingCommand = true);
 
     try {
       final result = await ApiService.sendCommand(
         type: type,
         intensity: intensity,
+        pattern: pattern,
       );
 
       if (!mounted) return;
@@ -495,6 +509,38 @@ class _DashboardPageState extends State<DashboardPage> {
                           onTap: () => _sendCommand('come_back'),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (customPatterns.isNotEmpty) ...[
+                      const Divider(),
+                      const SizedBox(height: 10),
+                      ...customPatterns.map((patternObj) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _actionButton(
+                            text: patternObj['name'],
+                            icon: Icons.waves_rounded,
+                            onTap: () {
+                              List<dynamic> dynamicPattern = patternObj['pattern'];
+                              List<int> patternList = dynamicPattern.cast<int>();
+                              _sendCommand('custom_vibration', pattern: patternList);
+                            },
+                          ),
+                        );
+                      }),
+                    ],
+                    _actionButton(
+                      text: 'Create Custom Vibration',
+                      icon: Icons.add_circle_outline_rounded,
+                      onTap: () async {
+                        final added = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CustomVibrationPage()),
+                        );
+                        if (added == true) {
+                          _loadCustomPatterns();
+                        }
+                      },
                     ),
                   ],
                 ),

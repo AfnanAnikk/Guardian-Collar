@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:mjpeg_stream/mjpeg_stream.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LiveStreamPage extends StatefulWidget {
   const LiveStreamPage({super.key});
@@ -79,16 +80,11 @@ class _LiveStreamPageState extends State<LiveStreamPage> {
       );
     }
 
-    return MJPEGStreamScreen(
-      streamUrl: streamUrl!,
-      width: double.infinity,
-      height: double.infinity,
-      fit: BoxFit.contain,
-      showLiveIcon: true,
-      showLogs: false,
-      showWatermark: false,
-      borderRadius: 0,
-    );
+    return WebViewWidget(
+    controller: WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(streamUrl!)),
+  );
   }
 
   @override

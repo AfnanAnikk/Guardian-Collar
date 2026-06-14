@@ -36,11 +36,12 @@ app.get("/api/device/status", (req, res) => {
 });
 
 app.post("/api/device/command", (req, res) => {
-  const { type, intensity } = req.body;
+  const { type, intensity, pattern } = req.body;
 
   latestCommand = {
     type,
     intensity: intensity ?? null,
+    pattern: pattern ?? null,
     createdAt: new Date().toISOString()
   };
 
